@@ -17,7 +17,6 @@ module "hmpps_egress_controls" {
 
   enable_envoy_setup     = true
   enable_egress_controls = true
-  application            = "my-service"
   namespace              = "my-namespace"
   vpc_name               = "live-1"
 }

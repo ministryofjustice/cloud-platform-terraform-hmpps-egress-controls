@@ -1,7 +1,8 @@
-variable "application" {
-  description = "Application name"
+variable "resource_name_prefix" {
+  description = "Optional naming prefix; defaults to 'hmpps' in the module"
   type        = string
-  default     = "hmpps-egress-controls-example"
+  default     = "hmpps"
+  nullable    = false
 }
 
 variable "namespace" {

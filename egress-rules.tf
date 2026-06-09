@@ -47,7 +47,7 @@ data "aws_subnet" "eks_private" {
 
 locals {
   enable_envoy_resources        = var.enable_envoy_setup || var.enable_egress_controls
-  envoy_proxy_full_name         = "${var.application}-${var.envoy_proxy_name}"
+  envoy_proxy_full_name         = "${var.resource_name_prefix}-${var.envoy_proxy_name}"
   envoy_proxy_url               = "http://${local.envoy_proxy_full_name}.${var.namespace}.svc.cluster.local:${var.envoy_proxy_port}"
   envoy_proxy_no_proxy          = "127.0.0.1,localhost,.svc,.cluster.local"
   envoy_java_proxy_tool_options = "-Dhttp.proxyHost=${local.envoy_proxy_full_name} -Dhttp.proxyPort=${var.envoy_proxy_port} -Dhttps.proxyHost=${local.envoy_proxy_full_name} -Dhttps.proxyPort=${var.envoy_proxy_port} -Dhttp.nonProxyHosts=localhost|127.*|*.svc|*.cluster.local -Dhttps.nonProxyHosts=localhost|127.*|*.svc|*.cluster.local"
@@ -111,7 +111,7 @@ locals {
       apiVersion = "projectcalico.org/v3"
       kind       = "NetworkPolicy"
       metadata = {
-        name      = "${var.application}-deny-egress-order"
+        name      = "${var.resource_name_prefix}-deny-egress-order"
         namespace = var.namespace
       }
       spec = {
@@ -131,7 +131,7 @@ locals {
       apiVersion = "projectcalico.org/v3"
       kind       = "NetworkPolicy"
       metadata = {
-        name      = "${var.application}-allow-envoy-https-proxy-upstream-egress"
+        name      = "${var.resource_name_prefix}-allow-envoy-https-proxy-upstream-egress"
         namespace = var.namespace
       }
       spec = {
@@ -156,7 +156,7 @@ locals {
       apiVersion = "projectcalico.org/v3"
       kind       = "NetworkPolicy"
       metadata = {
-        name      = "${var.application}-allow-dns-egress"
+        name      = "${var.resource_name_prefix}-allow-dns-egress"
         namespace = var.namespace
       }
       spec = {
@@ -189,7 +189,7 @@ locals {
       apiVersion = "projectcalico.org/v3"
       kind       = "NetworkPolicy"
       metadata = {
-        name      = "${var.application}-allow-kube-dns-coredns-kubedns"
+        name      = "${var.resource_name_prefix}-allow-kube-dns-coredns-kubedns"
         namespace = var.namespace
       }
       spec = {
@@ -224,7 +224,7 @@ locals {
       apiVersion = "projectcalico.org/v3"
       kind       = "NetworkPolicy"
       metadata = {
-        name      = "${var.application}-allow-pod-to-pod-same-namespace-egress"
+        name      = "${var.resource_name_prefix}-allow-pod-to-pod-same-namespace-egress"
         namespace = var.namespace
       }
       spec = {
@@ -247,7 +247,7 @@ locals {
       apiVersion = "projectcalico.org/v3"
       kind       = "NetworkPolicy"
       metadata = {
-        name      = "${var.application}-allow-egress-envoy-https-proxy"
+        name      = "${var.resource_name_prefix}-allow-egress-envoy-https-proxy"
         namespace = var.namespace
       }
       spec = {
@@ -272,7 +272,7 @@ locals {
       apiVersion = "projectcalico.org/v3"
       kind       = "NetworkPolicy"
       metadata = {
-        name      = "${var.application}-allow-vpc-egress"
+        name      = "${var.resource_name_prefix}-allow-vpc-egress"
         namespace = var.namespace
       }
       spec = {
@@ -310,7 +310,7 @@ resource "kubernetes_manifest" "calico_egress_policies" {
 }
 
 # Envoy config map used by the proxy deployment.
-resource "kubernetes_config_map" "envoy_https_proxy" {
+resource "kubernetes_config_map_v1" "envoy_https_proxy" {
   count = local.enable_envoy_resources ? 1 : 0
 
   metadata {
@@ -426,7 +426,7 @@ EOT
 }
 
 # Envoy deployment that runs the HTTPS proxy.
-resource "kubernetes_deployment" "envoy_https_proxy" {
+resource "kubernetes_deployment_v1" "envoy_https_proxy" {
   count = local.enable_envoy_resources ? 1 : 0
 
   metadata {
@@ -461,7 +461,7 @@ resource "kubernetes_deployment" "envoy_https_proxy" {
       metadata {
         labels = local.envoy_labels
         annotations = {
-          "checksum/envoy-config" = sha256(kubernetes_config_map.envoy_https_proxy[0].data["envoy.yaml"])
+          "checksum/envoy-config" = sha256(kubernetes_config_map_v1.envoy_https_proxy[0].data["envoy.yaml"])
         }
       }
 
@@ -556,7 +556,7 @@ resource "kubernetes_deployment" "envoy_https_proxy" {
         volume {
           name = "envoy-config"
           config_map {
-            name = kubernetes_config_map.envoy_https_proxy[0].metadata[0].name
+            name = kubernetes_config_map_v1.envoy_https_proxy[0].metadata[0].name
           }
         }
       }
@@ -587,7 +587,7 @@ resource "kubernetes_pod_disruption_budget_v1" "envoy_https_proxy" {
 }
 
 # ClusterIP service that exposes the Envoy proxy inside the namespace.
-resource "kubernetes_service" "envoy_https_proxy" {
+resource "kubernetes_service_v1" "envoy_https_proxy" {
   count = local.enable_envoy_resources ? 1 : 0
 
   metadata {
@@ -613,7 +613,7 @@ resource "kubernetes_service" "envoy_https_proxy" {
 }
 
 # Secret with proxy env vars for application pods.
-resource "kubernetes_secret" "envoy_https_proxy_env" {
+resource "kubernetes_secret_v1" "envoy_https_proxy_env" {
   count = local.enable_envoy_resources ? 1 : 0
 
   metadata {
