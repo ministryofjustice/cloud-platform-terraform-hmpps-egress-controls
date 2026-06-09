@@ -3,7 +3,7 @@ module "hmpps_egress_controls" {
 
   enable_envoy_setup     = true
   enable_egress_controls = true
-  application            = var.application
+  resource_name_prefix   = var.resource_name_prefix
   namespace              = var.namespace
   vpc_name               = var.vpc_name
 }

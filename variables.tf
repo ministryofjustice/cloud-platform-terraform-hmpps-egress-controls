@@ -117,13 +117,16 @@ variable "envoy_extra_allowed_hosts_suffixes" {
   }
 }
 
-########
-# Tags #
-########
-
-variable "application" {
-  description = "Application name"
+variable "resource_name_prefix" {
+  description = "Optional naming prefix for resources; defaults to 'hmpps' when unset"
   type        = string
+  default     = "hmpps"
+  nullable    = false
+
+  validation {
+    condition     = length(trimspace(var.resource_name_prefix)) > 0
+    error_message = "resource_name_prefix must be a non-empty string."
+  }
 }
 
 variable "namespace" {
