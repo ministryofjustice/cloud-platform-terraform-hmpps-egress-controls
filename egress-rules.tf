@@ -470,6 +470,10 @@ resource "kubernetes_deployment_v1" "envoy_https_proxy" {
           run_as_non_root = true
           run_as_user     = 101
           run_as_group    = 101
+
+          seccomp_profile {
+            type = "RuntimeDefault"
+          }
         }
 
         init_container {
@@ -543,6 +547,10 @@ resource "kubernetes_deployment_v1" "envoy_https_proxy" {
 
           security_context {
             allow_privilege_escalation = false
+
+            capabilities {
+              drop = ["ALL"]
+            }
           }
 
           volume_mount {
