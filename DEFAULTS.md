@@ -6,8 +6,10 @@ This module includes default allowlists for common HMPPS service dependencies. T
 
 These specific hostnames are allowed by default:
 
-- `sqs.eu-west-2.amazonaws.com` - AWS SQS service endpoint
-- `sts.eu-west-2.amazonaws.com` - AWS STS service endpoint
+- `sqs.eu-west-2.amazonaws.com` - AWS SQS service endpoint region 2
+- `sts.eu-west-2.amazonaws.com` - AWS STS service endpoint region 2
+- `sqs.eu-west-1.amazonaws.com` - AWS SQS service endpoint region 1
+- `sts.eu-west-1.amazonaws.com` - AWS STS service endpoint region 1
 - `agent.azureserviceprofiler.net` - Azure Application Insights profiler
 
 ## Default Hostname Suffixes
