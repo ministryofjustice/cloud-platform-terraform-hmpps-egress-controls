@@ -67,6 +67,8 @@ variable "envoy_default_allowed_hosts_exact" {
   default = [
     "sqs.eu-west-2.amazonaws.com",
     "sts.eu-west-2.amazonaws.com",
+    "sqs.eu-west-1.amazonaws.com",
+    "sts.eu-west-1.amazonaws.com",
     "agent.azureserviceprofiler.net",
   ]
   validation {
