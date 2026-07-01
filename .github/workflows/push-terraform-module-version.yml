@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      - uses: ministryofjustice/cloud-platform-environments/cmd/push-terraform-module-version@bd81eafbed65f057f5a36f860044574ffcf2d61e # main
+      - uses: ministryofjustice/cloud-platform-environments/cmd/push-terraform-module-version@6479cfbdc5042918a203933945ad5e1827c40f57 # main
         env:
           # see https://github.com/ministryofjustice/cloud-platform-go-get-module/
           # get the address from the ingress eg. 'https://' + `kubectl get ing -n cloud-platform-go-get-module-$ENV`
