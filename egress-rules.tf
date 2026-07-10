@@ -294,6 +294,14 @@ locals {
               nets  = local.vpc_egress_cidr_blocks
               ports = [6379]
             }
+          },
+          {
+            action   = "Allow"
+            protocol = "TCP"
+            destination = {
+              nets  = local.vpc_egress_cidr_blocks
+              ports = [1433]
+            }
           }
         ]
         types = ["Egress"]
