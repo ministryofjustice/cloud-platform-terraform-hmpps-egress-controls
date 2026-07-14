@@ -90,6 +90,7 @@ No modules.
 | <a name="input_envoy_proxy_replicas"></a> [envoy\_proxy\_replicas](#input\_envoy\_proxy\_replicas) | Number of Envoy proxy replicas | `number` | `2` | no |
 | <a name="input_namespace"></a> [namespace](#input\_namespace) | Namespace name | `string` | n/a | yes |
 | <a name="input_resource_name_prefix"></a> [resource\_name\_prefix](#input\_resource\_name\_prefix) | Optional naming prefix for resources; defaults to 'hmpps' when unset | `string` | `"hmpps"` | no |
+| <a name="input_vpc_egress_ports"></a> [vpc\_egress\_ports](#input\_vpc\_egress\_ports) | TCP ports allowed for direct pod-to-VPC egress. Defaults to RDS PostgreSQL (5432) and ElastiCache Redis (6379); override completely to suit your service's datastore ports | `list(number)` | <pre>[<br/>  5432,<br/>  6379<br/>]</pre> | no |
 | <a name="input_vpc_name"></a> [vpc\_name](#input\_vpc\_name) | VPC Name tag used to look up private and EKS-private subnet CIDRs for VPC egress policies | `string` | n/a | yes |
 
 ## Outputs

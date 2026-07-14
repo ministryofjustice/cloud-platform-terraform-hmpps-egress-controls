@@ -267,7 +267,7 @@ locals {
       }
     }
     }, length(local.vpc_egress_cidr_blocks) > 0 ? {
-    # Allows all pods to directly access private VPC address ranges (RDS and ElastiCache ports).
+    # Allows all pods to directly access private VPC address ranges on the configured ports (default: RDS PostgreSQL and ElastiCache Redis).
     allow-vpc-egress = {
       apiVersion = "projectcalico.org/v3"
       kind       = "NetworkPolicy"
@@ -284,15 +284,7 @@ locals {
             protocol = "TCP"
             destination = {
               nets  = local.vpc_egress_cidr_blocks
-              ports = [5432]
-            }
-          },
-          {
-            action   = "Allow"
-            protocol = "TCP"
-            destination = {
-              nets  = local.vpc_egress_cidr_blocks
-              ports = [6379]
+              ports = var.vpc_egress_ports
             }
           }
         ]

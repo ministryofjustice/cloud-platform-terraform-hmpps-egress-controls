@@ -121,6 +121,12 @@ variable "envoy_extra_allowed_hosts_suffixes" {
   }
 }
 
+variable "vpc_egress_ports" {
+  description = "TCP ports allowed for direct pod-to-VPC egress. Defaults to RDS PostgreSQL (5432) and ElastiCache Redis (6379); override completely to suit your service's datastore ports"
+  type        = list(number)
+  default     = [5432, 6379]
+}
+
 variable "resource_name_prefix" {
   description = "Optional naming prefix for resources; defaults to 'hmpps' when unset"
   type        = string
