@@ -20,6 +20,25 @@ These domain suffixes are allowed by default (any subdomain under these will be 
 - `.livediagnostics.monitor.azure.com` - Azure monitoring and diagnostics
 - `.service.justice.gov.uk` - HMPPS internal services
 
+## Default VPC Egress Ports
+
+When `enable_egress_controls = true`, pods are also allowed to connect directly (bypassing Envoy) to private VPC address ranges on these TCP ports by default:
+
+- `5432` - RDS PostgreSQL
+- `6379` - ElastiCache Redis
+
+`vpc_egress_ports` is a complete override, not a merge with these defaults - if your service uses a different port, list every port you need (including 5432/6379 if you still need them):
+
+```hcl
+module "hmpps_egress_controls" {
+  source = "github.com/ministryofjustice/cloud-platform-terraform-hmpps-egress-controls?ref=x.x.x"
+
+  # ... required variables ...
+
+  vpc_egress_ports = [5432, 6379, 3306] # add a custom port, keep the defaults
+}
+```
+
 ## Adding Additional Hosts
 
 If your service needs to connect to additional external services, add them using the module's extra allowlist variables:
