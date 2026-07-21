@@ -472,6 +472,15 @@ resource "kubernetes_deployment_v1" "envoy_https_proxy" {
           name  = "validate-envoy-config"
           image = var.envoy_image
 
+          security_context {
+            run_as_non_root            = true
+            allow_privilege_escalation = false
+
+            capabilities {
+              drop = ["ALL"]
+            }
+          }
+
           command = ["envoy"]
           args = [
             "--mode",
@@ -538,6 +547,7 @@ resource "kubernetes_deployment_v1" "envoy_https_proxy" {
           }
 
           security_context {
+            run_as_non_root            = true
             allow_privilege_escalation = false
 
             capabilities {
