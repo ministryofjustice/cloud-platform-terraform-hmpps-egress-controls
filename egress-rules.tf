@@ -219,6 +219,31 @@ locals {
       }
     }
 
+    # Allows pods labeled egress-access=kube-api to access the Kubernetes API service.
+    allow-kubernetes-api-egress = {
+      apiVersion = "projectcalico.org/v3"
+      kind       = "NetworkPolicy"
+      metadata = {
+        name      = "${var.resource_name_prefix}-allow-kubernetes-api-egress"
+        namespace = var.namespace
+      }
+      spec = {
+        order    = 27.0
+        selector = "egress-access == \"kube-api\""
+        egress = [
+          {
+            action   = "Allow"
+            protocol = "TCP"
+            destination = {
+              nets  = ["10.100.0.1/32"]
+              ports = [443]
+            }
+          }
+        ]
+        types = ["Egress"]
+      }
+    }
+
     # Allows pods to communicate with other pods in the same namespace.
     allow-pod-to-pod-same-namespace-egress = {
       apiVersion = "projectcalico.org/v3"
