@@ -235,7 +235,7 @@ locals {
             action   = "Allow"
             protocol = "TCP"
             destination = {
-              nets  = ["10.100.0.1/32"]
+              nets  = ["172.20.0.0/16"]
               ports = [443]
             }
           }
