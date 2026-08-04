@@ -105,6 +105,32 @@ locals {
     ])
   )
 
+  extra_namespace_tcp_egress_policies = {
+    for rule in var.extra_namespace_tcp_egress_rules : "allow-${rule.name}-tcp-egress" => {
+      apiVersion = "projectcalico.org/v3"
+      kind       = "NetworkPolicy"
+      metadata = {
+        name      = "${var.resource_name_prefix}-allow-${rule.name}-tcp-egress"
+        namespace = var.namespace
+      }
+      spec = {
+        order    = rule.order
+        selector = "all()"
+        egress = [
+          {
+            action   = "Allow"
+            protocol = "TCP"
+            destination = {
+              namespaceSelector = "kubernetes.io/metadata.name == \"${rule.namespace}\""
+              ports             = rule.ports
+            }
+          }
+        ]
+        types = ["Egress"]
+      }
+    }
+  }
+
   calico_egress_policies = merge({
     # Default deny for egress once the allow rules below are in place.
     deny-egress-order = {
@@ -291,7 +317,7 @@ locals {
         types = ["Egress"]
       }
     }
-    }, length(local.vpc_egress_cidr_blocks) > 0 ? {
+    }, local.extra_namespace_tcp_egress_policies, length(local.vpc_egress_cidr_blocks) > 0 ? {
     # Allows all pods to directly access private VPC address ranges on the configured ports (default: RDS PostgreSQL and ElastiCache Redis).
     allow-vpc-egress = {
       apiVersion = "projectcalico.org/v3"

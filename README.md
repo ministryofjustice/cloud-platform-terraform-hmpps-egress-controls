@@ -17,6 +17,14 @@ module "hmpps_egress_controls" {
 
   enable_envoy_setup     = true
   enable_egress_controls = true
+  extra_namespace_tcp_egress_rules = [
+    {
+      name      = "alertmanager-http"
+      namespace = "cloud-platform-monitoring-alerts"
+      ports     = [8080]
+      order     = 34.5
+    }
+  ]
   namespace              = "my-namespace"
   vpc_name               = "live-1"
 }
@@ -30,6 +38,9 @@ When `enable_envoy_setup = true` (or `enable_egress_controls = true`), this modu
 
 When `enable_egress_controls = true`, this module also creates:
 - Calico `NetworkPolicy` resources for DNS egress, in-namespace pod egress, Envoy routing, VPC egress for PostgreSQL/Redis ports, and default deny egress.
+
+Optional egress policies:
+- Use `extra_namespace_tcp_egress_rules` to add namespace-based TCP egress policies per repo.
 
 ## Examples
 

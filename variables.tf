@@ -127,6 +127,38 @@ variable "vpc_egress_ports" {
   default     = [5432, 6379]
 }
 
+variable "extra_namespace_tcp_egress_rules" {
+  description = "Optional additional namespace-based TCP egress rules. Each rule creates a Calico NetworkPolicy allowing all pods to egress to a target namespace on the given ports"
+  type = list(object({
+    name      = string
+    namespace = string
+    ports     = list(number)
+    order     = number
+  }))
+  default = []
+
+  validation {
+    condition = length(var.extra_namespace_tcp_egress_rules) == length(distinct([
+      for rule in var.extra_namespace_tcp_egress_rules : rule.name
+    ]))
+    error_message = "extra_namespace_tcp_egress_rules names must be unique."
+  }
+
+  validation {
+    condition = alltrue([
+      for rule in var.extra_namespace_tcp_egress_rules : can(regex("^[a-z0-9-]+$", rule.name))
+    ])
+    error_message = "extra_namespace_tcp_egress_rules names must use lowercase letters, digits, and hyphens only."
+  }
+
+  validation {
+    condition = alltrue([
+      for rule in var.extra_namespace_tcp_egress_rules : length(rule.ports) > 0
+    ])
+    error_message = "extra_namespace_tcp_egress_rules ports must include at least one TCP port per rule."
+  }
+}
+
 variable "resource_name_prefix" {
   description = "Optional naming prefix for resources; defaults to 'hmpps' when unset"
   type        = string
