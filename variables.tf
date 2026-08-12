@@ -72,6 +72,8 @@ variable "envoy_default_allowed_hosts_exact" {
     "sts.eu-west-1.amazonaws.com",
     "sns.eu-west-1.amazonaws.com",
     "agent.azureserviceprofiler.net",
+    "o345774.ingest.sentry.io",
+    "o345774.ingest.us.sentry.io"
   ]
   validation {
     condition = alltrue([
