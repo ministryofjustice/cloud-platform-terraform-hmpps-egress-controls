@@ -11,6 +11,7 @@ These specific hostnames are allowed by default:
 - `sqs.eu-west-1.amazonaws.com` - AWS SQS service endpoint region 1
 - `sts.eu-west-1.amazonaws.com` - AWS STS service endpoint region 1
 - `agent.azureserviceprofiler.net` - Azure Application Insights profiler
+- `dc.services.visualstudio.com` - Azure Application Insights telemetry
 - `o345774.ingest.sentry.io` - Ingestion endpoint for traffic to MoJ Sentry account
 - `o345774.ingest.us.sentry.io` - Ingestion endpoint for traffic to MoJ (US) Sentry account
 
