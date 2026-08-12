@@ -73,6 +73,7 @@ variable "envoy_default_allowed_hosts_exact" {
     "sns.eu-west-1.amazonaws.com",
     "agent.azureserviceprofiler.net",
     "dc.services.visualstudio.com",
+    "rt.services.visualstudio.com",
     "o345774.ingest.sentry.io",
     "o345774.ingest.us.sentry.io"
   ]
