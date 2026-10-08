@@ -69,13 +69,13 @@ locals {
     egress_controls_enabled      = var.enable_egress_controls
     envoy_enabled                = local.enable_envoy_resources
     envoy_proxy_url              = local.enable_envoy_resources ? local.envoy_proxy_url : null
-    envoy_deployment_name        = local.enable_envoy_resources ? kubernetes_deployment_v1.envoy_https_proxy[0].metadata[0].name : null
+    envoy_deployment_name        = local.enable_envoy_resources ? local.envoy_proxy_full_name : null
     envoy_allowed_hosts_exact    = local.enable_envoy_resources ? local.envoy_allowed_hosts_exact : []
     envoy_allowed_hosts_suffixes = local.enable_envoy_resources ? local.envoy_allowed_hosts_suffixes : []
     vpc_egress_cidr_blocks        = local.vpc_egress_cidr_blocks
     vpc_egress_ports              = var.vpc_egress_ports
     vpc_egress_policy_enabled     = var.enable_egress_controls && length(local.vpc_egress_cidr_blocks) > 0
-    calico_policy_names          = sort([for policy in kubernetes_manifest.calico_egress_policies : policy.manifest.metadata.name])
+    calico_policy_names          = sort([for policy in local.calico_egress_policies : policy.metadata.name if var.enable_egress_controls])
   }
 
   envoy_allowed_host_rbac_permissions = concat(
