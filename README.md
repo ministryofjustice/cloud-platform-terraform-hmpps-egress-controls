@@ -35,6 +35,31 @@ When `enable_egress_controls = true`, this module also creates:
 
 See [examples/](examples/) for a complete example.
 
+## Troubleshooting
+
+### Diagnostic Configuration
+
+When either enablement flag is true, `<resource_name_prefix>-egress-diagnostics`
+contains `diagnostics.json` with proxy settings, merged allowlists, VPC CIDRs/ports,
+and policy names. Read it with namespace Secret access:
+
+```bash
+kubectl get secret hmpps-egress-diagnostics -n my-namespace \
+  -o jsonpath='{.data.diagnostics\.json}' | base64 --decode | jq .
+```
+
+The Secret reflects the last Terraform apply, not live connectivity.
+`vpc_egress_ports` shows configured ports; `vpc_egress_policy_enabled` indicates
+whether the VPC allow policy is created. If enforcement is enabled but this is
+false, check the VPC name and subnet tags for missing CIDRs.
+
+### Envoy Access Logs
+
+JSON logs include the destination (`authority`), client IP, upstream address,
+CONNECT status, duration, and traffic volumes. Inspect `response_code_details`,
+`response_flags`, and `upstream_transport_failure_reason` for failure clues.
+`protocol` describes the client-to-proxy HTTP connection.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -63,6 +88,7 @@ No modules.
 | [kubernetes_deployment_v1.envoy_https_proxy](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/deployment_v1) | resource |
 | [kubernetes_manifest.calico_egress_policies](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest) | resource |
 | [kubernetes_pod_disruption_budget_v1.envoy_https_proxy](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/pod_disruption_budget_v1) | resource |
+| [kubernetes_secret_v1.egress_diagnostics](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/secret_v1) | resource |
 | [kubernetes_secret_v1.envoy_https_proxy_env](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/secret_v1) | resource |
 | [kubernetes_service_v1.envoy_https_proxy](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/service_v1) | resource |
 | [aws_subnet.eks_private](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnet) | data source |
