@@ -53,12 +53,52 @@ The Secret reflects the last Terraform apply, not live connectivity.
 whether the VPC allow policy is created. If enforcement is enabled but this is
 false, check the VPC name and subnet tags for missing CIDRs.
 
+### Egress Check Script
+
+With local `kubectl` and `jq`, run against the current Kubernetes context:
+
+```bash
+bash scripts/egress-check.sh --namespace my-namespace --url 'https://api.example.com/health'
+```
+
+For PostgreSQL or Redis, test direct TCP access with `--tcp HOST:PORT` instead:
+
+```bash
+bash scripts/egress-check.sh --namespace my-namespace --tcp 'my-database.xxxxxx.eu-west-2.rds.amazonaws.com:5432'
+```
+
+TCP checks require the port to be enabled in the diagnostic VPC policy and the
+resolved IPv4 address to fall within a discovered VPC CIDR. A successful check
+confirms only that a TCP connection is possible; it does not test database
+protocol, TLS, authentication, or application credentials. Direct database
+traffic bypasses Envoy, so no Envoy access log is expected.
+
+Pass an HTTPS URL on port 443. Envoy checks the hostname against its allowlist;
+curl then requests the supplied path and query. Do not include a username or
+password in the URL, or a `#fragment`; the script rejects both.
+The helper reads the diagnostic Secret, creates a temporary pod using
+`ghcr.io/ministryofjustice/hmpps-devops-tools:latest`, tests proxied HTTPS, and
+matches Envoy logs by pod IP, destination, and time. It requests pod deletion on
+exit; Kubernetes may take a few seconds to remove it.
+The helper uses the current `kubectl` context. Use `--secret` or `--image` to
+override defaults; `--help` lists options.
+Requires `get` on Secrets, Deployments, and Pods; `list`/`watch` Pods; `create`/
+`delete` Pods; `create` on `pods/exec`; and `get` on Envoy `pods/log`.
+Exit codes: `0` expected behavior, `1` failed check, `2` inconclusive/setup error.
+Missing logs may reflect delayed CONNECT logging, not a Calico denial. The test
+pod does not reproduce application-specific labels or proxy settings.
+
+Run `bash tests/egress-check.sh` to test the helper locally. It mocks `kubectl`
+responses and does not connect to a cluster or create Kubernetes resources.
+
 ### Envoy Access Logs
 
 JSON logs include the destination (`authority`), client IP, upstream address,
 CONNECT status, duration, and traffic volumes. Inspect `response_code_details`,
 `response_flags`, and `upstream_transport_failure_reason` for failure clues.
 `protocol` describes the client-to-proxy HTTP connection.
+Envoy's CONNECT status indicates whether the proxy allowed the tunnel; the
+destination's HTTP status is returned inside it and is not an Envoy policy result.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
