@@ -53,6 +53,7 @@ kubectl() {
         .spec.activeDeadlineSeconds >= 140
       ' >/dev/null || return 1
       printf 'created\n' >> "$MOCK_TRACE"
+      [[ "$MOCK_SCENARIO" != create-uncertain ]] || return 1
       ;;
     wait) [[ "$MOCK_SCENARIO" != pod-failure ]] ;;
     exec)
@@ -62,11 +63,13 @@ kubectl() {
           return 0
         elif [[ "$MOCK_SCENARIO" == tcp-outside-vpc ]]; then
           printf '198.51.100.25 STREAM db.internal.test\n'
+        elif [[ "$MOCK_SCENARIO" == tcp-mixed-answers ]]; then
+          printf '198.51.100.25 STREAM db.internal.test\n172.20.35.10 STREAM db.internal.test\n'
         else
           printf '172.20.35.10 STREAM db.internal.test\n172.20.35.10 DGRAM db.internal.test\n'
         fi
       elif [[ "$*" == *'/dev/tcp/'* ]]; then
-        [[ "$*" == *'timeout '* && "$*" == *"$MOCK_TCP_HOST"* && "$*" == *"$MOCK_TCP_PORT"* ]] || return 1
+        [[ "$*" == *'timeout '* && "$*" == *"$MOCK_TCP_IP"* && "$*" == *"$MOCK_TCP_PORT"* ]] || return 1
         [[ "$MOCK_SCENARIO" != tcp-refused ]] || return 1
       else
         [[ "$*" == *'--disable'* && "$*" == *'--noproxy'* && "$*" == *'--proxy http://'* ]] || return 1
@@ -186,7 +189,7 @@ run_tcp_check() {
   local output status tcp_host tcp_port
   tcp_host=${target%:*}
   tcp_port=${target##*:}
-  export MOCK_SCENARIO="$scenario" MOCK_TCP_HOST="$tcp_host" MOCK_TCP_PORT="$tcp_port"
+  export MOCK_SCENARIO="$scenario" MOCK_TCP_HOST="$tcp_host" MOCK_TCP_PORT="$tcp_port" MOCK_TCP_IP=172.20.35.10
   : > "$MOCK_TRACE"
   : > "$MOCK_LOG_READS"
   if output=$(bash "$root/scripts/egress-check.sh" --namespace test --tcp "$target" 2>&1); then
@@ -211,8 +214,23 @@ run_tcp_check tcp-pass db.internal.test:5432 0 'TCP connection to db.internal.te
 run_tcp_check tcp-refused db.internal.test:6379 1 'TCP connection to db.internal.test:6379 failed' true
 run_tcp_check tcp-dns-failure db.internal.test:5432 1 'DNS returned no IPv4 addresses' true
 run_tcp_check tcp-outside-vpc db.internal.test:5432 1 'outside the discovered VPC CIDRs' true
+run_tcp_check tcp-mixed-answers db.internal.test:5432 0 'TCP connection to db.internal.test:5432 succeeded (connected to 172.20.35.10)' true
 run_tcp_check tcp-policy-disabled db.internal.test:5432 1 'not enabled by the diagnostic VPC egress policy' false
 run_tcp_check tcp-port-disabled db.internal.test:3306 1 'not enabled by the diagnostic VPC egress policy' false
+
+export MOCK_SCENARIO=create-uncertain MOCK_URL=https://allowed.example.com/health MOCK_HOST=allowed.example.com MOCK_ALLOWED=true
+: > "$MOCK_TRACE"
+if output=$(bash "$root/scripts/egress-check.sh" --namespace test --url "$MOCK_URL" 2>&1); then
+  printf 'FAIL create-uncertain: expected create error\n%s\n' "$output"
+  exit 1
+else
+  status=$?
+fi
+if [[ "$status" != 2 || "$output" != *'Cannot create the diagnostic pod'* || $(< "$MOCK_TRACE") != $'created\ndeleted' ]]; then
+  printf 'FAIL create-uncertain: failed create did not request pod cleanup\n%s\n' "$output"
+  exit 1
+fi
+printf 'PASS create-uncertain (cleanup requested after ambiguous create)\n'
 
 for bad_url in 'http://example.com/' 'https://example.com:8443/' 'https://user@example.com/' 'https://example.com/#fragment' 'https://*.example.com/'; do
   if bash "$root/scripts/egress-check.sh" --namespace test --url "$bad_url" >/dev/null 2>&1; then

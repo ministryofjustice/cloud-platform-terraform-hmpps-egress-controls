@@ -174,6 +174,7 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+pod_created=true
 if ! jq -n --arg name "$pod_name" --arg namespace "$namespace" --arg image "$image" --argjson deadline "$((timeout + 120))" '{
   apiVersion: "v1", kind: "Pod",
   metadata: {name: $name, namespace: $namespace, labels: {app: "egress-check"}},
@@ -190,7 +191,6 @@ if ! jq -n --arg name "$pod_name" --arg namespace "$namespace" --arg image "$ima
 }' | "${kube[@]}" create -f - >/dev/null; then
   abort 'Cannot create the diagnostic pod'
 fi
-pod_created=true
 if ! "${kube[@]}" wait --for=condition=Ready "pod/$pod_name" --timeout=90s >/dev/null; then
   "${kube[@]}" get pod "$pod_name" -o wide >&2 || true
   abort 'Diagnostic pod did not become ready; check image pulls, admission rules, and pod events'
@@ -298,10 +298,12 @@ else
   else
     report INFO "Resolved $tcp_host to: ${resolved_ips//$'\n'/, }"
     matched_cidr=''
+    matched_ip=''
     for resolved_ip in $resolved_ips; do
       for cidr in $(printf '%s' "$diagnostics" | jq -r '.vpc_egress_cidr_blocks[]'); do
         if ipv4_in_cidr "$resolved_ip" "$cidr"; then
           matched_cidr=$cidr
+          matched_ip=$resolved_ip
           break 2
         fi
       done
@@ -310,8 +312,8 @@ else
       report FAIL 'Resolved address is outside the discovered VPC CIDRs; the module VPC egress policy does not cover this target'
     else
       report INFO "Destination is within configured VPC CIDR $matched_cidr"
-      if "${kube[@]}" exec "$pod_name" -c check -- timeout "${timeout}s" bash -c "exec 3<>\"/dev/tcp/\$1/\$2\"" _ "$tcp_host" "$tcp_port" >/dev/null 2>&1; then
-        report PASS "TCP connection to $tcp_host:$tcp_port succeeded"
+      if "${kube[@]}" exec "$pod_name" -c check -- timeout "${timeout}s" bash -c "exec 3<>\"/dev/tcp/\$1/\$2\"" _ "$matched_ip" "$tcp_port" >/dev/null 2>&1; then
+        report PASS "TCP connection to $tcp_host:$tcp_port succeeded (connected to $matched_ip)"
         report INFO 'This confirms TCP reachability only; it does not test PostgreSQL/Redis protocol, TLS, or authentication'
       else
         report FAIL "TCP connection to $tcp_host:$tcp_port failed; check Calico policy, routing, security groups, and datastore health"
