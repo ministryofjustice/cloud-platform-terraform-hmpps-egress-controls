@@ -149,7 +149,7 @@ No modules.
 | <a name="input_envoy_dns_host_ttl"></a> [envoy\_dns\_host\_ttl](#input\_envoy\_dns\_host\_ttl) | TTL used for cached DNS hosts in Envoy | `string` | `"60s"` | no |
 | <a name="input_envoy_extra_allowed_hosts_exact"></a> [envoy\_extra\_allowed\_hosts\_exact](#input\_envoy\_extra\_allowed\_hosts\_exact) | Additional exact hostnames to allow through the Envoy proxy, merged with the default list in envoy\_default\_allowed\_hosts\_exact | `list(string)` | `[]` | no |
 | <a name="input_envoy_extra_allowed_hosts_suffixes"></a> [envoy\_extra\_allowed\_hosts\_suffixes](#input\_envoy\_extra\_allowed\_hosts\_suffixes) | Additional hostname suffixes to allow through the Envoy proxy, merged with the default list in envoy\_default\_allowed\_hosts\_suffixes | `list(string)` | `[]` | no |
-| <a name="input_envoy_image"></a> [envoy\_image](#input\_envoy\_image) | Container image for the Envoy proxy | `string` | `"envoyproxy/envoy:v1.38-latest"` | no |
+| <a name="input_envoy_image"></a> [envoy\_image](#input\_envoy\_image) | Container image for the Envoy proxy | `string` | `"envoyproxy/envoy:v1.40-latest"` | no |
 | <a name="input_envoy_log_level"></a> [envoy\_log\_level](#input\_envoy\_log\_level) | Envoy runtime log level | `string` | `"info"` | no |
 | <a name="input_envoy_proxy_name"></a> [envoy\_proxy\_name](#input\_envoy\_proxy\_name) | Base name used for the Envoy proxy resource suffix and app.kubernetes.io/name label | `string` | `"envoy-https-proxy"` | no |
 | <a name="input_envoy_proxy_port"></a> [envoy\_proxy\_port](#input\_envoy\_proxy\_port) | Envoy forward proxy listening port | `number` | `3128` | no |
