@@ -34,7 +34,7 @@ variable "envoy_proxy_replicas" {
 variable "envoy_image" {
   description = "Container image for the Envoy proxy"
   type        = string
-  default     = "envoyproxy/envoy:v1.38-latest"
+  default     = "envoyproxy/envoy:v1.40-latest"
 }
 
 variable "envoy_log_level" {
@@ -72,6 +72,10 @@ variable "envoy_default_allowed_hosts_exact" {
     "sts.eu-west-1.amazonaws.com",
     "sns.eu-west-1.amazonaws.com",
     "agent.azureserviceprofiler.net",
+    "dc.services.visualstudio.com",
+    "rt.services.visualstudio.com",
+    "o345774.ingest.sentry.io",
+    "o345774.ingest.us.sentry.io"
   ]
   validation {
     condition = alltrue([
