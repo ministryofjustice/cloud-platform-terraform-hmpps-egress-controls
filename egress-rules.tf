@@ -51,6 +51,8 @@ locals {
   envoy_proxy_url               = "http://${local.envoy_proxy_full_name}.${var.namespace}.svc.cluster.local:${var.envoy_proxy_port}"
   envoy_proxy_no_proxy          = "127.0.0.1,localhost,.svc,.cluster.local"
   envoy_java_proxy_tool_options = "-Dhttp.proxyHost=${local.envoy_proxy_full_name} -Dhttp.proxyPort=${var.envoy_proxy_port} -Dhttps.proxyHost=${local.envoy_proxy_full_name} -Dhttps.proxyPort=${var.envoy_proxy_port} -Dhttp.nonProxyHosts=localhost|127.*|*.svc|*.cluster.local -Dhttps.nonProxyHosts=localhost|127.*|*.svc|*.cluster.local"
+  envoy_allowed_hosts_exact     = distinct(concat(var.envoy_default_allowed_hosts_exact, var.envoy_extra_allowed_hosts_exact))
+  envoy_allowed_hosts_suffixes  = distinct(concat(var.envoy_default_allowed_hosts_suffixes, var.envoy_extra_allowed_hosts_suffixes))
   vpc_egress_cidr_blocks = distinct(concat(
     [for subnet in data.aws_subnet.private : subnet.cidr_block],
     [for subnet in data.aws_subnet.eks_private : subnet.cidr_block]
@@ -62,9 +64,23 @@ locals {
     "app.kubernetes.io/instance" = local.envoy_proxy_full_name
   }
 
+  egress_diagnostics = {
+    namespace                    = var.namespace
+    egress_controls_enabled      = var.enable_egress_controls
+    envoy_enabled                = local.enable_envoy_resources
+    envoy_proxy_url              = local.enable_envoy_resources ? local.envoy_proxy_url : null
+    envoy_deployment_name        = local.enable_envoy_resources ? local.envoy_proxy_full_name : null
+    envoy_allowed_hosts_exact    = local.enable_envoy_resources ? local.envoy_allowed_hosts_exact : []
+    envoy_allowed_hosts_suffixes = local.enable_envoy_resources ? local.envoy_allowed_hosts_suffixes : []
+    vpc_egress_cidr_blocks        = local.vpc_egress_cidr_blocks
+    vpc_egress_ports              = var.vpc_egress_ports
+    vpc_egress_policy_enabled     = var.enable_egress_controls && length(local.vpc_egress_cidr_blocks) > 0
+    calico_policy_names          = sort([for policy in local.calico_egress_policies : policy.metadata.name if var.enable_egress_controls])
+  }
+
   envoy_allowed_host_rbac_permissions = concat(
     flatten([
-      for host in distinct(concat(var.envoy_default_allowed_hosts_exact, var.envoy_extra_allowed_hosts_exact)) : [
+      for host in local.envoy_allowed_hosts_exact : [
         {
           header = {
             name = ":authority"
@@ -84,7 +100,7 @@ locals {
       ]
     ]),
     flatten([
-      for suffix in distinct(concat(var.envoy_default_allowed_hosts_suffixes, var.envoy_extra_allowed_hosts_suffixes)) : [
+      for suffix in local.envoy_allowed_hosts_suffixes : [
         {
           header = {
             name = ":authority"
@@ -371,22 +387,17 @@ static_resources:
                   start_time: "%START_TIME%"
                   method: "%REQ(:METHOD)%"
                   authority: "%REQ(:AUTHORITY)%"
-                  path: "%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%"
                   protocol: "%PROTOCOL%"
                   downstream_client_address: "%DOWNSTREAM_DIRECT_REMOTE_ADDRESS%"
                   downstream_client_ip: "%DOWNSTREAM_DIRECT_REMOTE_ADDRESS_WITHOUT_PORT%"
-                  downstream_remote_address: "%DOWNSTREAM_REMOTE_ADDRESS%"
-                  downstream_remote_ip: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%"
                   response_code: "%RESPONSE_CODE%"
                   response_code_details: "%RESPONSE_CODE_DETAILS%"
+                  response_flags: "%RESPONSE_FLAGS%"
+                  upstream_transport_failure_reason: "%UPSTREAM_TRANSPORT_FAILURE_REASON%"
                   upstream_host: "%UPSTREAM_HOST%"
-                  upstream_cluster: "%UPSTREAM_CLUSTER%"
-                  upstream_service_time_ms: "%RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)%"
                   bytes_received: "%BYTES_RECEIVED%"
                   bytes_sent: "%BYTES_SENT%"
                   duration_ms: "%DURATION%"
-                  route_name: "%ROUTE_NAME%"
-                  requested_server_name: "%REQUESTED_SERVER_NAME%"
           # Python's http.client (requests/httpie) always sends CONNECT as HTTP/1.0, which Envoy rejects by default.
           http_protocol_options:
             accept_http_10: true
@@ -397,7 +408,8 @@ static_resources:
               domains:
               - "*"
               routes:
-              - match:
+              - name: approved_https_connect
+                match:
                   connect_matcher: {}
                 route:
                   cluster: dynamic_forward_proxy_cluster
@@ -671,5 +683,22 @@ resource "kubernetes_secret_v1" "envoy_https_proxy_env" {
     https_proxy             = local.envoy_proxy_url
     no_proxy                = local.envoy_proxy_no_proxy
     JAVA_PROXY_TOOL_OPTIONS = local.envoy_java_proxy_tool_options
+  }
+}
+
+resource "kubernetes_secret_v1" "egress_diagnostics" {
+  count = local.enable_envoy_resources ? 1 : 0
+
+  metadata {
+    name      = "${var.resource_name_prefix}-egress-diagnostics"
+    namespace = var.namespace
+    labels    = local.envoy_labels
+    annotations = {
+      "app.kubernetes.io/managed-by" = "terraform"
+    }
+  }
+
+  data = {
+    "diagnostics.json" = jsonencode(local.egress_diagnostics)
   }
 }

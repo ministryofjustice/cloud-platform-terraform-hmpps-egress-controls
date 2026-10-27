@@ -34,7 +34,7 @@ variable "envoy_proxy_replicas" {
 variable "envoy_image" {
   description = "Container image for the Envoy proxy"
   type        = string
-  default     = "envoyproxy/envoy:v1.38-latest"
+  default     = "envoyproxy/envoy:v1.40-latest"
 }
 
 variable "envoy_log_level" {

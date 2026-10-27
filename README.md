@@ -35,6 +35,71 @@ When `enable_egress_controls = true`, this module also creates:
 
 See [examples/](examples/) for a complete example.
 
+## Troubleshooting
+
+### Diagnostic Configuration
+
+When either enablement flag is true, `<resource_name_prefix>-egress-diagnostics`
+contains `diagnostics.json` with proxy settings, merged allowlists, VPC CIDRs/ports,
+and policy names. Read it with namespace Secret access:
+
+```bash
+kubectl get secret hmpps-egress-diagnostics -n my-namespace \
+  -o jsonpath='{.data.diagnostics\.json}' | base64 --decode | jq .
+```
+
+The Secret reflects the last Terraform apply, not live connectivity.
+`vpc_egress_ports` shows configured ports; `vpc_egress_policy_enabled` indicates
+whether the VPC allow policy is created. If enforcement is enabled but this is
+false, check the VPC name and subnet tags for missing CIDRs.
+
+### Egress Check Script
+
+With local `kubectl` and `jq`, run against the current Kubernetes context:
+
+```bash
+bash scripts/egress-check.sh --namespace my-namespace --url 'https://api.example.com/health'
+```
+
+For PostgreSQL or Redis, test direct TCP access with `--tcp HOST:PORT` instead:
+
+```bash
+bash scripts/egress-check.sh --namespace my-namespace --tcp 'my-database.xxxxxx.eu-west-2.rds.amazonaws.com:5432'
+```
+
+TCP checks require the port to be enabled in the diagnostic VPC policy and the
+resolved IPv4 address to fall within a discovered VPC CIDR. A successful check
+confirms only that a TCP connection is possible; it does not test database
+protocol, TLS, authentication, or application credentials. Direct database
+traffic bypasses Envoy, so no Envoy access log is expected.
+
+Pass an HTTPS URL on port 443. Envoy checks the hostname against its allowlist;
+curl then requests the supplied path and query. Do not include a username or
+password in the URL, or a `#fragment`; the script rejects both.
+The helper reads the diagnostic Secret, creates a temporary pod using
+`ghcr.io/ministryofjustice/hmpps-devops-tools:latest`, tests proxied HTTPS, and
+matches Envoy logs by pod IP, destination, and time. It requests pod deletion on
+exit; Kubernetes may take a few seconds to remove it.
+The helper uses the current `kubectl` context. Use `--secret` or `--image` to
+override defaults; `--help` lists options.
+Requires `get` on Secrets, Deployments, and Pods; `list`/`watch` Pods; `create`/
+`delete` Pods; `create` on `pods/exec`; and `get` on Envoy `pods/log`.
+Exit codes: `0` expected behavior, `1` failed check, `2` inconclusive/setup error.
+Missing logs may reflect delayed CONNECT logging, not a Calico denial. The test
+pod does not reproduce application-specific labels or proxy settings.
+
+Run `bash tests/egress-check.sh` to test the helper locally. It mocks `kubectl`
+responses and does not connect to a cluster or create Kubernetes resources.
+
+### Envoy Access Logs
+
+JSON logs include the destination (`authority`), client IP, upstream address,
+CONNECT status, duration, and traffic volumes. Inspect `response_code_details`,
+`response_flags`, and `upstream_transport_failure_reason` for failure clues.
+`protocol` describes the client-to-proxy HTTP connection.
+Envoy's CONNECT status indicates whether the proxy allowed the tunnel; the
+destination's HTTP status is returned inside it and is not an Envoy policy result.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -63,6 +128,7 @@ No modules.
 | [kubernetes_deployment_v1.envoy_https_proxy](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/deployment_v1) | resource |
 | [kubernetes_manifest.calico_egress_policies](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest) | resource |
 | [kubernetes_pod_disruption_budget_v1.envoy_https_proxy](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/pod_disruption_budget_v1) | resource |
+| [kubernetes_secret_v1.egress_diagnostics](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/secret_v1) | resource |
 | [kubernetes_secret_v1.envoy_https_proxy_env](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/secret_v1) | resource |
 | [kubernetes_service_v1.envoy_https_proxy](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/service_v1) | resource |
 | [aws_subnet.eks_private](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnet) | data source |
@@ -83,7 +149,7 @@ No modules.
 | <a name="input_envoy_dns_host_ttl"></a> [envoy\_dns\_host\_ttl](#input\_envoy\_dns\_host\_ttl) | TTL used for cached DNS hosts in Envoy | `string` | `"60s"` | no |
 | <a name="input_envoy_extra_allowed_hosts_exact"></a> [envoy\_extra\_allowed\_hosts\_exact](#input\_envoy\_extra\_allowed\_hosts\_exact) | Additional exact hostnames to allow through the Envoy proxy, merged with the default list in envoy\_default\_allowed\_hosts\_exact | `list(string)` | `[]` | no |
 | <a name="input_envoy_extra_allowed_hosts_suffixes"></a> [envoy\_extra\_allowed\_hosts\_suffixes](#input\_envoy\_extra\_allowed\_hosts\_suffixes) | Additional hostname suffixes to allow through the Envoy proxy, merged with the default list in envoy\_default\_allowed\_hosts\_suffixes | `list(string)` | `[]` | no |
-| <a name="input_envoy_image"></a> [envoy\_image](#input\_envoy\_image) | Container image for the Envoy proxy | `string` | `"envoyproxy/envoy:v1.38-latest"` | no |
+| <a name="input_envoy_image"></a> [envoy\_image](#input\_envoy\_image) | Container image for the Envoy proxy | `string` | `"envoyproxy/envoy:v1.40-latest"` | no |
 | <a name="input_envoy_log_level"></a> [envoy\_log\_level](#input\_envoy\_log\_level) | Envoy runtime log level | `string` | `"info"` | no |
 | <a name="input_envoy_proxy_name"></a> [envoy\_proxy\_name](#input\_envoy\_proxy\_name) | Base name used for the Envoy proxy resource suffix and app.kubernetes.io/name label | `string` | `"envoy-https-proxy"` | no |
 | <a name="input_envoy_proxy_port"></a> [envoy\_proxy\_port](#input\_envoy\_proxy\_port) | Envoy forward proxy listening port | `number` | `3128` | no |
